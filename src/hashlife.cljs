@@ -1,11 +1,17 @@
-(ns experiment)
+;file:///home/santiago/Documents/Santiago/Webs/learn/cljs/hashlife/index.html
 
-;file:///home/santiago/Documents/Santiago/Webs/learn/cljs/canvas-experiments/index.html
+(ns hashlife)
 
 (def g0 [[[false false false false][false false false false][false false false false][false false false false]]
-         [[false true true true][false false false false][false false false false][false false false false]]
-         [[false false false false][false false false false][false false false true][false false false false]]
-         [[false false false false][false false false false][false false false false][false false false false]]])
+         [[false false true false][false false false true][true false false false][false true false false]]
+         [[false false false false][false false false false][false false false false][false false false false]]
+         [[false true true false][false false true false][true false false false][false true false false]]])
+
+(defn rule [spawn survive]
+  (fn [nine]
+    (contains? (if (nth nine 0) survive spawn) (count (filter identity (rest nine))))))
+
+(def conway (rule #{3} #{2 3}))
 
 
 ;; awesome functions for constructing vectors
@@ -16,6 +22,11 @@
       (map (partial vmap v) i)
       (vi v i))
     (nth v i)))
+
+;; (vmap g0  [[[0 2][0 1][1 0][1 3][2 0][3 1][3 0][0 3][0 0]]
+;;             [[1 3][1 0][1 1][1 2][2 1][2 0][3 1][0 2][0 1]]
+;;             [[2 0][1 3][1 2][2 1][2 2][2 3][3 2][3 1][0 2]]
+;;             [[3 1][0 2][1 3][2 0][2 3][3 2][3 3][3 0][0 3]]])
 
 (defn subsq [g]
   (vmap g [[0 2][1 3][2 0][3 1]]))
@@ -32,6 +43,8 @@
             [[1 3][1 0][1 1][1 2][2 1][2 0][3 1][0 2][0 1]]
             [[2 0][1 3][1 2][2 1][2 2][2 3][3 2][3 1][0 2]]
             [[3 1][0 2][1 3][2 0][2 3][3 2][3 3][3 0][0 3]]]))
+
+(quadto3 (vi g0 [1]))
 (defn s3tosubsq [g]
   (vmap g [[[8][1][0][7]] [[1][2][3][0]] [[0][3][4][5]] [[7][0][5][6]]]))
 
@@ -65,8 +78,6 @@
 (do (def mlife (iterate (comp mresult pad) g0)) nil)
 
 
-(def latestgen (nth mlife 7))
-
 ;; (time (nth life 7))
 ;; (time (nth mlife 7))
 
@@ -84,8 +95,9 @@
 (defn l []
   (min (width) (height)))
 
+
 ; initialife raphael
-(def raphael (js/Raphael. 0 0 (width) (height) ))
+(def raphael (js/Raphael 0 0 (width) (height) ))
 (defn clear [color]
   (-> raphael
     (.rect 0 0 (width) (height))
@@ -110,4 +122,20 @@
            (printg (nth g 3)       ox       (/ (+ y oy) 2) (/ (+ x ox) 2)         y   )))))))
 
 
-(clear "#acd")
+
+(defn draw [g]
+  (clear "#2e5")
+  (printg g 0 0 (l) (l)))
+
+
+(def latestgen (nth mlife 0))
+(draw latestgen)
+
+(def gen 0)
+(defn loop []
+  (def latestgen (nth mlife gen))
+  (draw latestgen)
+  (def gen (mod (inc gen) 10)))
+
+(def intervalId (js/setInterval loop 1000))
+(js/clearInterval intervalId)
