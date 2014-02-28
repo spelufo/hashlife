@@ -9,7 +9,6 @@
          [[false true  true  false][false false true  false][true  false false false][false true  false false]]])
 
 (def g0 (mapv (constantly g0) (range 4)))
-(def g0 (mapv (constantly g0) (range 4)))
 
 (defn rule [spawn survive]
   (fn [nine]
@@ -67,11 +66,11 @@
   (if (vector? ((g 0) 0))
     (mapv result (quadover (mapv result (neigover g))))
     (qubit g)))
-
-(def mresult (memoize result))
+(def result (memoize result))
 
 (defn depth [v]
   (if (vector? v) (inc (depth (v 0))) 0))
+(def depth (memoize depth))
 
 (defn result-at-time [g t]
   (let [n (depth g)
@@ -79,22 +78,19 @@
         time-to-intermediate (.pow js/Math 2 (- n 3))]
     (cond (= 0 t) g
           (<= t time-to-intermediate) (mapv subquad (quadover (mapv #(result-at-time % t) (neigover g))))
-          (< t time-to-result) (mapv #(result-at-time % (- t time-to-intermediate)) (quadover (mapv mresult (neigover g))))
-          :else (result-at-time (mresult g) (- t time-to-result)))))
-
+          (< t time-to-result) (mapv #(result-at-time % (- t time-to-intermediate)) (quadover (mapv result (neigover g))))
+          :else (result-at-time (result g) (- t time-to-result)))))
+(def result-at-time (memoize result-at-time))
 
 (defn gempty [n]
   (if (= n 0) false
    (mapv (constantly (gempty (dec n))) (range 4))))
+(def gempty (memoize gempty))
 
 (defn pad-by [g r]
   (if (= 0 r) g
     (let [e (gempty (depth (g 0)))]
       (pad-by [[e e (g 0) e][e e e (g 1)][(g 2) e e e][e (g 3) e e]] (dec r)))))
-
-(defn pad [g]
-  (let [e (gempty (depth (g 0)))]
-    [[e e (g 0) e][e e e (g 1)][(g 2) e e e][e (g 3) e e]]))
 
 (defn future [g t]
   (let [n (depth g)
@@ -103,29 +99,22 @@
         gpadded (pad-by g (inc (- newn n)))]
     (result-at-time gpadded t)))
 
-;; (defn future [g t]
-;;   (let [n (depth g)
-;;         newl (+ (* 2 t) (.pow js/Math 2 n))
-;;         newn (.ceil js/Math (/ (.log js/Math newl) (.log js/Math 2)))
-;;         r (- newn n)]
-;;     (log n newl newn r )))
-
-;; (draw (future g0 18))
-; Drawing Logic from here on...
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn log [& s] (.log js/console (reduce #(str %1 "\n" %2) s)))
 (set-print-fn! log) ;; Necessary for (time ())
 
 (defn width []
   (identity js/innerWidth))
+
 (defn height []
   (identity js/innerHeight))
+
 (defn l []
   (min (width) (height)))
 
-
-; initialife raphael
 (def raphael (js/Raphael 0 0 (width) (height)))
+
 (defn clear [color]
   (-> raphael
     (.rect 0 0 (width) (height))
@@ -155,21 +144,8 @@
                              s (/ l 3)]
                          (printg (g i) (+ x (* ix s)) (+ y (* iy s)) s))))))
 
-
 (defn draw [g]
   (clear "#1371de")
   (printg g 0 0 (l)))
 
 (draw g0)
-
-;; (def latestgen (nth mlife 0))
-;; (draw latestgen)
-
-;; (def gen 0)
-;; (defn loop []
-;;   (def latestgen (nth mlife gen))
-;;   (draw latestgen)
-;;   (def gen (mod (inc gen) 10)))
-
-;; (def intervalId (js/setInterval loop 1000))
-;; (js/clearInterval intervalId)
