@@ -68,34 +68,20 @@
     (mapv result (quadover (mapv result (neigover g))))
     (qubit g)))
 
-(defn halfresult [g]
-  (if (vector? ((g 0) 0))
-    (mapv subquad (quadover (mapv result (neigover g))))
-    (qubit g)))
-
-(draw g0)
-
-(draw (mapv (comp neigsubquad neighalf) (neigover g0)))
-(draw (mapv (comp neigsubquad neighalf) (neigover g0)))
-(draw (neighalf g0))
-(draw (result g0))
-
-(defn neigsubquad [g] (mapv subquad (quadover g)))
-(defn neighalf [g] (mapv halfresult (neigover g)))
-
-(defn result-at-time [g t]
-  (let [n (depth g)
-        time-to-result (pow 2 (- n 2))
-        time-to-halfresult (pow 2 (- n 3))]
-    (cond (= 0 t) (subquad g)
-          (< t time-to-result) (quadover (mapv #(time-to-result % (/ time-to-result 2)) (neigover g)))
-          :else (result-at-time (result g) (- t time-to-result))
-
-
 (def mresult (memoize result))
 
 (defn depth [v]
   (if (vector? v) (inc (depth (v 0))) 0))
+
+(defn result-at-time [g t]
+  (let [n (depth g)
+        time-to-result (.pow js/Math 2 (- n 2))
+        time-to-intermediate (.pow js/Math 2 (- n 3))]
+    (cond (= 0 t) g
+          (<= t time-to-intermediate) (mapv subquad (quadover (mapv #(result-at-time % t) (neigover g))))
+          (< t time-to-result) (mapv #(result-at-time % (- t time-to-intermediate)) (quadover (mapv mresult (neigover g))))
+          :else (result-at-time (mresult g) (- t time-to-result)))))
+
 
 (defn gempty [n]
   (if (= n 0) false
@@ -103,67 +89,28 @@
 
 (defn pad-by [g r]
   (if (= 0 r) g
-   (let [e (gempty (depth (g 0)))]
-     (pad-by [[e e (g 0) e][e e e (g 1)][(g 2) e e e][e (g 3) e e]] (dec r)))))
+    (let [e (gempty (depth (g 0)))]
+      (pad-by [[e e (g 0) e][e e e (g 1)][(g 2) e e e][e (g 3) e e]] (dec r)))))
 
-(defn lg [x b]
-  (/ (.log js/Math x) (.log js/Math b)))
+(defn pad [g]
+  (let [e (gempty (depth (g 0)))]
+    [[e e (g 0) e][e e e (g 1)][(g 2) e e e][e (g 3) e e]]))
 
-(defn pow [b x]
-  (.pow js/Math b x))
-
-(defn ceil [x]
-  (.ceil js/Math x))
-
-(defn result-at-time [g t]
+(defn future [g t]
   (let [n (depth g)
-        time-to-result (pow 2 (- n 2))
-        time-to-halfresult (pow 2 (- n 3))]
-    (cond (= 0 t) g
-          (<= t time-to-halfresult) (mapv halfresult (neigover g))
-          (< t time-to-result) (neign->quadn (mapv #(result-at-time % (- t time-to-intermediate)) (mapv result (quadn->neign g)))
-          :else (result-at-time (result g) (- t time-to-result))))))
+        newl (+ (* 2 t) (.pow js/Math 2 n))
+        newn (.ceil js/Math (/ (.log js/Math newl) (.log js/Math 2)))
+        gpadded (pad-by g (inc (- newn n)))]
+    (result-at-time gpadded t)))
 
 ;; (defn future [g t]
-;;   (let [n (ceil (log t 2))
-;;         g (pad-by g n)]
-;;     (cond
-;;      (= 0 n) g
-;;      (< (pow 2 (- n 2)) t) (mapv #(future % (- t (pow 2 (- n 2)))) (quadn->neign g))
-;;      (< .....))))
+;;   (let [n (depth g)
+;;         newl (+ (* 2 t) (.pow js/Math 2 n))
+;;         newn (.ceil js/Math (/ (.log js/Math newl) (.log js/Math 2)))
+;;         r (- newn n)]
+;;     (log n newl newn r )))
 
-
-;;      (= 1 g) ))
-;;   (= 0 (mod t 2)
-;;    (< t 0) nil
-;;    (= t 0) g
-;;    :else (let [])))
-
-;; (defn pad-by [g k]
-;;   )
-
-;; ;; Paddear segun el futuro del currrent pattern hata una potencia de 2
-
-;; ;; Make an empty 2^n grid
-;; (defn gempty [n]
-;;   (cond
-;;    (= n 0) false
-;;    (= n 1) [false false false false]
-;;    :else (map (constantly (gempty (dec n))) (range 4))))
-
-
-
-;; (do (def life (iterate (comp result pad) g0)) nil)
-
-;; (def mresult (memoize result))
-;; (do (def mlife (iterate (comp mresult pad) g0)) nil)
-
-
-;; (time (nth life 7))
-;; (time (nth mlife 7))
-
-
-
+;; (draw (future g0 18))
 ; Drawing Logic from here on...
 
 (defn log [& s] (.log js/console (reduce #(str %1 "\n" %2) s)))
